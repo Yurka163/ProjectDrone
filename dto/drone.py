@@ -1,7 +1,9 @@
-class Drone:
-    def __init__(self, id: int, model: str):
-        self.id = id
-        self.model = model
-        self.status = None
-        self.battery_lvl = 100
+import dataclasses
+from typing import Optional
+
+@dataclasses.dataclass
+class DroneDto:
+    id: Optional[int] = None
+    model: Optional[str] = None
+    status: Optional[str] = 'None'
 

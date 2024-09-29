@@ -1,11 +1,23 @@
 import sqlite3
 import logging
-from typing import Optional, List
+from abc import ABC, abstractmethod
+from dto.user import UserDto
+from query_builder import QueryBuilder
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
+class DBFactory(ABC):
+    """Абстрактный класс, представляющий фабрику для подключения к базе данных"""
+    @abstractmethod
+    def connect(self, path_to_db: str):
+        pass
 
-class SQLiteDB:
+    @abstractmethod
+    def close_connect(self, conn):
+        pass
+
+
+class SQLiteDB(DBFactory):
     """Класс для работы с базой данных SQLite."""
 
     def connect(self, path_to_db: str):
@@ -51,8 +63,8 @@ class SQLiteDB:
             finally:
                 self.close_connect(conn)
 
-    def create_users_db(self):
-        """Создает базу данных пользователей."""
+    def create_users_table(self):
+        """Создает таблицу пользователей."""
         create_users_table_sql = """
             CREATE TABLE IF NOT EXISTS tbl_users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,9 +74,9 @@ class SQLiteDB:
                 password TEXT NOT NULL
             )
         """
-        self.create_table(db_name='users_db', create_table_sql=create_users_table_sql)
+        self.create_table(path_to_db='database.db', create_table_sql=create_users_table_sql)
 
-    def create_drones_db(self):
+    def create_drones_table(self):
         """Создает базу данных дронов."""
         create_drones_table_sql = """
             CREATE TABLE IF NOT EXISTS tbl_drones (
@@ -72,67 +84,39 @@ class SQLiteDB:
                 model TEXT NOT NULL          
             )
         """
-        self.create_table(db_name='drones_db', create_table_sql=create_drones_table_sql)
+        self.create_table(path_to_db='database.db', create_table_sql=create_drones_table_sql)
 
     def init_db(self):
         """Инициализирует базы данных и создает необходимые таблицы."""
-        self.create_users_db()
-        self.create_drones_db()
+        self.create_users_table()
+        self.create_drones_table()
+        self.create_admin_user()
 
+    def create_admin_user(self):
 
-class QueryBuilder:
-    """Класс для построения SQL-запросов с использованием паттерна 'Builder'"""
+        query_builder = QueryBuilder()
+        user = UserDto(login="admin", first_name="admin", last_name="admin", password="admin")
 
-    def __init__(self):
-        """Инициализирует экземпляр QueryBuilder с пустыми частями запроса и параметрами."""
-        self.__query_parts = {}
-        self.__params = []
+        # Проверка на существование администратора
+        conn = self.connect("database.db")
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM tbl_users WHERE login=?", (user.login,))
+            exists = cursor.fetchone()[0]
 
-    def insert_into(self, table: str, columns: list):
-        """
-        Создает часть SQL-запроса для вставки данных в указанную таблицу.
-        Передается имя таблицы, в которую будут вставлены данные.
-        Передается список имен столбцов, в которые будут вставлены значения.
-        Возвращает экземпляр QueryBuilder для дальнейшего построения запроса.
-        """
-        cols = ','.join(columns)
-        question_marks = ','.join(['?'] * len(columns))
-        self.__query_parts["INSERT INTO"] = f"INSERT INTO {table} ({cols}) VALUES ({question_marks})"
-        return self
+            if exists:
+                logging.info("Администратор уже существует.")
+                self.close_connect(conn)
+                return
 
-    def values(self, *columns: list):
-        """
-        Добавляет значения для вставки в запрос.
-        Передаются значения, которые будут вставлены в соответствующие столбцы.
-        Возвращает экземпляр QueryBuilder для дальнейшего построения запроса.
-        """
-        self.__params.extend(columns)
-        return self
+            columns = ['login', 'first_name', 'last_name', 'password']
+            values = [user.login, user.first_name, user.last_name, user.password]
 
-    def get_params(self):
-        """Метод для получения списка параметров"""
-        return self.__params
+            query = query_builder.insert_into("tbl_users", columns).values(*values).build()
 
-    def select(self, table: str, columns="*"):
-        """Метод для создания части запроса SELECT"""
-        self.__query_parts["SELECT"] = f"SELECT {columns}"
-        self.__query_parts["FROM"] = f"FROM {table}"
-        return self
-
-    def where(self, condition: str, params: Optional[List] = None):
-        """Метод для добавления условия к SQL-запросу"""
-        self.__query_parts["WHERE"] = f"WHERE {condition}"
-        if params is not None:
-            self.__params.extend(params)
-        return self
-
-    def build(self):
-        """Строит итоговый SQL-запрос."""
-        query = ""
-        if "INSERT INTO" in self.__query_parts:
-            query = self.__query_parts["INSERT INTO"]
-        if "SELECT" in self.__query_parts:
-            query = f'{self.__query_parts["SELECT"]} {self.__query_parts["FROM"]} '
-        if "WHERE" in self.__query_parts:
-            query += self.__query_parts["WHERE"]
-        return query
+            try:
+                cursor.execute(query, query_builder.get_params())
+                conn.commit()
+                logging.info("Администратор успешно создан.")
+            except sqlite3.Error as e:
+                logging.error(f"Ошибка при создании администратора {e}.")
