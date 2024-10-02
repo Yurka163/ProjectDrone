@@ -14,8 +14,8 @@
         <link rel="stylesheet" href="../static/css/styles.css" type="text/css">
         <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // Check for token in localStorage
-            const token = localStorage.getItem('authToken');
+            // Check for token in sessionStorage
+            const token = sessionStorage.getItem('authToken');
             if (!token) {
                 // If token is missing, redirect to login page
                 alert('Токен не найден! Выполните авторизацию.');
@@ -25,6 +25,7 @@
                 console.log('Токен найден:', token);
             }
         });
+
 
 
 
@@ -42,45 +43,26 @@
                 <thead>
                 <tr>
                     <th>Id</th>
-                    <th>Модель</th>
-                    <th>Статус</th>
+                    <th>Порт</th>
+                    <th>Сер. номер</th>
+                    <th>Миссия</th>
+                    <th>Время создания</th>
                 </tr>
                 </thead>
                 <tbody>
                 {% for drone in drones %}
                 <tr>
                     <td><a href="/drones/{{ drone.id }}">{{ drone.id }}</a></td>
-                    <td>{{ drone.model }}</td>
-                    <td>{{ drone.status }}</td>
+                    <td>{{ drone.port }}</td>
+                    <td>{{ drone.serial_number }}</td>
+                    <td>{{ drone.mission }}</td>
+                    <td>{{ drone.timestamp }}</td>
                 </tr>
                 {% endfor %}
                 </tbody>
             </table>
             <form class="settings-panel-form" action="/drones/add" method="GET">
                 <button type="submit">Добавить дрон</button>
-            </form>
-            <br>
-            <h2>Операторы</h2>
-            <table class="styled-table">
-                <thead>
-                <tr>
-                    <th></th>
-                    <th>Имя пользователя</th>
-                </tr>
-                </thead>
-                <tbody>
-                <!-- Loop through a list of users -->
-                <!--                <tr th:each="user, iter : ${users}">-->
-                <!--                    <td th:text="${iter.index}+1" th:style="'font-weight: bold;'"></td>-->
-                <!--                    <td th:text="${user.chatId}">id</td>-->
-                <!--                    <td th:text="${user.userName}">userName</td>-->
-                <!--                    <td th:text="${user.groupName}">groupName</td>-->
-                <!--                    <td th:text="${user.paymentStatus}">paymentStatus</td>-->
-                <!--                </tr>-->
-                </tbody>
-            </table>
-            <form class="settings-panel-form">
-                <button onclick="add()" type="submit">Добавить оператора</button>
             </form>
         </div>
     </div>

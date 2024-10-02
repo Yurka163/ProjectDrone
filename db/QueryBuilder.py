@@ -1,21 +1,10 @@
-from typing import Optional, List
-
-
+# Паттерн Строитель для построения SQL-запросов
 class QueryBuilder:
-    """Класс для построения SQL-запросов с использованием паттерна 'Builder' и 'Singleton'"""
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            cls._instance = super(QueryBuilder, cls).__new__(cls)
-        return cls._instance
-
+    """Класс для построения SQL-запросов с использованием паттерна 'Builder'"""
     def __init__(self):
         """Инициализирует экземпляр QueryBuilder с пустыми частями запроса и параметрами."""
-        if not hasattr(self, 'initialized'):  # Проверка на инициализацию
-            self.initialized = True
-            self.__query_parts = {}
-            self.__params = []
+        self.__query_parts = {}
+        self.__params = []
 
     def insert_into(self, table: str, columns: list):
         """
@@ -29,13 +18,14 @@ class QueryBuilder:
         self.__query_parts["INSERT INTO"] = f"INSERT INTO {table} ({cols}) VALUES ({question_marks})"
         return self
 
-    def values(self, *columns):
+    def values(self, *columns: list):
         """
         Добавляет значения для вставки в запрос.
         Передаются значения, которые будут вставлены в соответствующие столбцы.
         Возвращает экземпляр QueryBuilder для дальнейшего построения запроса.
         """
         self.__params.extend(columns)
+        print(self.get_params())
         return self
 
     def get_params(self):
@@ -48,21 +38,32 @@ class QueryBuilder:
         self.__query_parts["FROM"] = f"FROM {table}"
         return self
 
-    def where(self, condition: str, params: Optional[List] = None):
+    def where(self, condition: str, params=None):
         """Метод для добавления условия к SQL-запросу"""
         self.__query_parts["WHERE"] = f"WHERE {condition}"
-        if params is not None:
+        if params:
             self.__params.extend(params)
         return self
 
-    def reset(self):
-        """Сбрасывает состояние QueryBuilder."""
-        self.__query_parts.clear()
-        self.__params.clear()
+    def update(self, table: str):
+        """Метод для создания части запроса UPDATE"""
+        self.__query_parts["UPDATE"] = f"UPDATE {table} SET"
+        return self
+
+    def set(self, columns: dict):
+        """Метод для установки столбцов и их новых значений"""
+        set_clause = ', '.join([f" {column} = ?" for column in columns.keys()])
+        self.__query_parts["SET"] = set_clause
+        self.__params.extend(columns.values())  # Add the values in the same order
+        return self
 
     def build(self):
         """Строит итоговый SQL-запрос."""
         query = ""
+        if "UPDATE" in self.__query_parts:
+            query = self.__query_parts["UPDATE"]
+        if "SET" in self.__query_parts:
+            query += self.__query_parts["SET"]
         if "INSERT INTO" in self.__query_parts:
             query = self.__query_parts["INSERT INTO"]
         if "SELECT" in self.__query_parts:
