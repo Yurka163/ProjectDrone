@@ -6,8 +6,8 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required
 import logging
 from pyinstrument import Profiler
 from dto.drone_dto import DroneDto
-from services.drone_controller import DroneController
-from services.user_controller import UserController
+from controllers.drone_controller import DroneController
+from controllers.user_controller import UserController
 from db.Database import init_db
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
